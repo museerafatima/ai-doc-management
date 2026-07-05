@@ -1,3 +1,4 @@
+from app.core.permissions import get_current_user, require_role
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -102,18 +103,20 @@ def update_workspace(
     workspace_id: int,
     data: UpdateWorkspaceRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    member=Depends(require_role("admin")),   # 403s automatically if not admin
 ):
-    membership = (
-        db.query(WorkspaceMember)
-        .filter(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == current_user.id)
-        .first()
-    )
-    # TEMPORARY check — Day 3 replaces this with the reusable require_role() dependency
-    if not membership or membership.role != "admin":
-        raise HTTPException(status_code=403, detail="Only an admin can rename this workspace")
-
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     workspace.name = data.name
     db.commit()
     return {"id": workspace.id, "name": workspace.name}
+
+@router.delete("/{workspace_id}")
+def delete_workspace(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    member=Depends(require_role("admin")),
+):
+    db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace_id).delete()
+    db.query(Workspace).filter(Workspace.id == workspace_id).delete()
+    db.commit()
+    return {"message": "Workspace deleted"}
