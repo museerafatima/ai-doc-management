@@ -120,3 +120,121 @@ def delete_workspace(
     db.query(Workspace).filter(Workspace.id == workspace_id).delete()
     db.commit()
     return {"message": "Workspace deleted"}
+
+from app.models.workspace import Invitation
+
+
+class InviteRequest(BaseModel):
+    email: str
+    role: str = "viewer"
+
+
+@router.post("/{workspace_id}/invite")
+def invite_member(
+    workspace_id: int,
+    data: InviteRequest,
+    db: Session = Depends(get_db),
+    member=Depends(require_role("admin")),
+):
+    if data.role not in ("admin", "editor", "viewer"):
+        raise HTTPException(
+            status_code=400,
+            detail="Role must be admin, editor, or viewer",
+        )
+
+    invite = Invitation(
+        workspace_id=workspace_id,
+        email=data.email,
+        role=data.role,
+        invited_by=member.user_id,
+    )
+
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+
+    # In production, this token is emailed as a link:
+    # yourapp.com/invite/accept?token=...
+
+    return {
+        "message": "Invite created",
+        "invite_token": invite.token,
+    }
+class AcceptInviteRequest(BaseModel):
+    token: str
+
+
+@router.post("/invites/accept")
+def accept_invite(
+    data: AcceptInviteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    invite = (
+        db.query(Invitation)
+        .filter(Invitation.token == data.token)
+        .first()
+    )
+
+    if not invite or invite.status != "pending":
+        raise HTTPException(
+            status_code=404,
+            detail="Invite not found or already used",
+        )
+
+    if invite.email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=403,
+            detail="This invite was sent to a different email address",
+        )
+
+    # Don't create a duplicate membership if the user is already in the workspace
+    existing = (
+        db.query(WorkspaceMember)
+        .filter(
+            WorkspaceMember.workspace_id == invite.workspace_id,
+            WorkspaceMember.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not existing:
+        db.add(
+            WorkspaceMember(
+                workspace_id=invite.workspace_id,
+                user_id=current_user.id,
+                role=invite.role,
+            )
+        )
+
+    invite.status = "accepted"
+    db.commit()
+
+    return {
+        "message": "You joined the workspace",
+        "workspace_id": invite.workspace_id,
+        "role": invite.role,
+    }
+@router.get("/{workspace_id}/invites")
+def list_invites(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    member=Depends(require_role("admin")),
+):
+    invites = (
+        db.query(Invitation)
+        .filter(
+            Invitation.workspace_id == workspace_id,
+            Invitation.status == "pending",
+        )
+        .all()
+    )
+
+    return [
+        {
+            "email": invite.email,
+            "role": invite.role,
+            "sent_at": invite.created_at,
+        }
+        for invite in invites
+    ]

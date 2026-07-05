@@ -25,3 +25,19 @@ class WorkspaceMember(Base):
         default="viewer"
     )  # "admin" | "editor" | "viewer"
     joined_at = Column(DateTime, default=datetime.utcnow)
+
+import uuid
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+
+class Invitation(Base):
+    __tablename__ = "invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    email = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="viewer")
+    invited_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, default=lambda: str(uuid.uuid4()))
+    status = Column(String, default="pending")  # "pending" | "accepted"
+    created_at = Column(DateTime, default=datetime.utcnow)
