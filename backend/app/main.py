@@ -24,3 +24,5 @@ def root():
     return {"status": "AI Doc Management API is running"}
 app.include_router(workspaces.router)
 app.include_router(documents.router)
+from app.api import auth, workspaces, documents, folders
+app.include_router(folders.router)
