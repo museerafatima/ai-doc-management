@@ -1,3 +1,4 @@
+from app.api import auth, workspaces, documents
 from app.api import auth, workspaces
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,3 +23,4 @@ app.include_router(router)
 def root():
     return {"status": "AI Doc Management API is running"}
 app.include_router(workspaces.router)
+app.include_router(documents.router)
