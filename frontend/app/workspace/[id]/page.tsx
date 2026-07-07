@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import UploadDropzone from '../../components/UploadDropzone'
 
 type Member = { user_id: number; full_name: string; email: string; role: string }
 type Invite = { email: string; role: string; sent_at: string }
@@ -51,6 +52,11 @@ export default function WorkspaceDetail() {
     }
   }
 
+  function handleUploaded() {
+    // we'll load and display documents starting Day 5 — for now just log it
+    console.log('Upload complete — refresh document list')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Team Members</h1>
@@ -90,6 +96,11 @@ export default function WorkspaceDetail() {
           ))}
         </div>
       )}
+
+      {/* Upload Dropzone Container added here */}
+      <div className="mb-6">
+        <UploadDropzone workspaceId={id as string} onUploaded={handleUploaded} />
+      </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
