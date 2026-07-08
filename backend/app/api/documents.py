@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 
+import magic  # python-magic — reads actual file bytes, not the filename
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -17,6 +18,15 @@ router = APIRouter(
     prefix="/workspaces/{workspace_id}/documents", tags=["Documents"]
 )
 
+ALLOWED_MIME_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",        # .xlsx
+    "application/msword",
+    "image/png", "image/jpeg", "image/jpg", "image/tiff",
+}
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB, per your project document's Day 7 requirement        
+
 
 @router.post("/")
 def upload_document(
@@ -28,14 +38,29 @@ def upload_document(
 ):
     if folder_id == 0:
         folder_id = None
-    file_key = f"{workspace_id}/{uuid.uuid4()}_{file.filename}"
 
+    # Read the first 2KB to detect the REAL file type (renaming a .exe to .pdf won't fool this)
+    header = file.file.read(2048)
+    file.file.seek(0)
+    detected_type = magic.from_buffer(header, mime=True)
+
+    if detected_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail=f"File type '{detected_type}' is not allowed")
+
+    # Check size WITHOUT reading the whole file into memory
     file.file.seek(0, 2)
     size_bytes = file.file.tell()
     file.file.seek(0)
 
+    if size_bytes > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File exceeds the 50MB limit ({size_bytes / 1024 / 1024:.1f}MB)")
+    if size_bytes == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
+
+    file_key = f"{workspace_id}/{uuid.uuid4()}_{file.filename}"
+
     upload_file(
-        file.file, file_key, file.content_type or "application/octet-stream"
+        file.file, file_key, detected_type
     )
 
     doc = Document(
@@ -43,7 +68,7 @@ def upload_document(
         folder_id=folder_id,
         filename=file.filename,
         file_key=file_key,
-        content_type=file.content_type,
+        content_type=detected_type,  # Storing the actual verified MIME type
         size_bytes=size_bytes,
         uploaded_by=member.user_id,
     )

@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '../components/ui'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -43,61 +45,99 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-sm border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          Welcome back
-        </h1>
+    <div className="min-h-screen flex bg-background">
+      {/* LEFT — brand panel, hidden on small screens */}
+      <div className="hidden lg:flex lg:w-5/12 bg-brand relative flex-col justify-between p-12 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(135deg, #fff 0px, #fff 1px, transparent 1px, transparent 22px)',
+          }}
+        />
+        <div className="relative text-white/90 text-sm font-medium tracking-wide">
+          DOCUFLOW
+        </div>
 
-        <p className="text-gray-500 mb-6">
-          Sign in to your workspace
-        </p>
+        <div className="relative">
+          <h1 className="font-display text-white text-4xl leading-tight mb-4">
+            Every document,<br />in its right place.
+          </h1>
+          <p className="text-white/70 text-sm max-w-sm leading-relaxed">
+            Shared workspaces, role-based access, and a single search across
+            everything your team has ever uploaded.
+          </p>
+        </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
-        )}
+        <div className="relative flex gap-6 text-white/60 text-xs font-mono">
+          <span>256-bit encryption</span>
+          <span>·</span>
+          <span>Role-based access</span>
+        </div>
+      </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+      {/* RIGHT — form */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          <h1 className="font-display text-2xl text-foreground mb-1">
+            Welcome back
+          </h1>
 
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="you@company.com"
-            />
-          </div>
+          <p className="text-muted text-sm mb-8">
+            Sign in to your workspace
+          </p>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+          {error && (
+            <div className="bg-danger-bg border border-danger/20 text-danger px-4 py-3 rounded-lg mb-5 text-sm">
+              {error}
+            </div>
+          )}
 
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="Enter your password"
-            />
-          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">
+                Email
+              </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-line bg-surface rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none transition-shadow"
+                placeholder="you@company.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">
+                Password
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-line bg-surface rounded-lg px-3.5 py-2.5 pr-16 text-sm text-foreground focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none transition-shadow"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-foreground"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   )

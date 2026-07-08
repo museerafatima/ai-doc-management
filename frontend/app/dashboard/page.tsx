@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button, RoleBadge, EmptyState } from '../components/ui'
 
 type Workspace = {
   id: number
@@ -13,6 +14,8 @@ type Workspace = {
 export default function Dashboard() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [newName, setNewName] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [userName, setUserName] = useState('')
   const router = useRouter()
 
   async function loadWorkspaces() {
@@ -30,6 +33,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    setUserName(localStorage.getItem('userName') || '')
     loadWorkspaces()
   }, [])
 
@@ -50,59 +54,91 @@ export default function Dashboard() {
     })
 
     setNewName('')
+    setShowForm(false)
     loadWorkspaces()
   }
 
+  function logout() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userName')
+    router.push('/login')
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-800">
-        Your Workspaces
-      </h1>
-
-      <form
-        onSubmit={createWorkspace}
-        className="mb-6 flex gap-2"
-      >
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New workspace name"
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          required
-        />
-
-        <button className="rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-          Create
-        </button>
-      </form>
-
-      <div className="grid gap-3">
-        {workspaces.map((ws) => (
-          <div
-            key={ws.id}
-            onClick={() => router.push(`/workspace/${ws.id}`)}
-            className="flex cursor-pointer items-center justify-between rounded-xl border bg-white p-4 hover:shadow-sm"
-          >
-            <div>
-              <p className="font-semibold text-gray-800">
-                {ws.name}
-              </p>
-
-              <p className="text-xs text-gray-400">
-                {ws.slug}
-              </p>
-            </div>
-
-            <span className="rounded-full bg-blue-50 px-2 py-1 text-xs capitalize text-blue-700">
-              {ws.role}
-            </span>
+    <div className="min-h-screen bg-background">
+      {/* TOPBAR */}
+      <div className="border-b border-line bg-surface">
+        <div className="max-w-5xl mx-auto px-8 py-4 flex items-center justify-between">
+          <span className="font-display text-lg text-foreground">DocuFlow</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted hidden sm:inline">{userName}</span>
+            <button onClick={logout} className="text-xs text-muted hover:text-danger transition-colors">
+              Sign out
+            </button>
           </div>
-        ))}
+        </div>
+      </div>
 
-        {workspaces.length === 0 && (
-          <p className="text-sm text-gray-400">
-            No workspaces yet — create your first one above.
-          </p>
+      <div className="max-w-5xl mx-auto px-8 py-10">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl text-foreground">
+              Your workspaces
+            </h1>
+            <p className="text-sm text-muted mt-1">Every company you belong to, in one place</p>
+          </div>
+          <Button onClick={() => setShowForm((s) => !s)}>
+            {showForm ? 'Cancel' : '+ New workspace'}
+          </Button>
+        </div>
+
+        {showForm && (
+          <form
+            onSubmit={createWorkspace}
+            className="paper-stack mb-8 flex gap-3 items-end rounded-xl border border-line bg-surface p-5"
+          >
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-muted mb-1.5">Workspace name</label>
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g. Acme Legal"
+                className="w-full rounded-lg border border-line px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none"
+                required
+                autoFocus
+              />
+            </div>
+            <Button type="submit">Create</Button>
+          </form>
+        )}
+
+        {workspaces.length === 0 ? (
+          <div className="paper-stack rounded-xl border border-line bg-surface">
+            <EmptyState
+              icon="🗂️"
+              title="No workspaces yet"
+              subtitle="Create your first one to start uploading and sharing documents."
+            />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {workspaces.map((ws) => (
+              <div
+                key={ws.id}
+                onClick={() => router.push(`/workspace/${ws.id}`)}
+                className="paper-stack cursor-pointer rounded-xl border border-line bg-surface p-5 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="mb-6 flex items-start justify-between">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-sm font-semibold text-brand">
+                    {ws.name[0]?.toUpperCase()}
+                  </div>
+                  <RoleBadge role={ws.role} />
+                </div>
+                <p className="text-sm font-semibold text-foreground">{ws.name}</p>
+                <p className="mt-0.5 font-mono text-xs text-muted">{ws.slug}</p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

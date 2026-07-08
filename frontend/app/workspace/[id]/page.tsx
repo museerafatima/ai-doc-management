@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import UploadDropzone from '../../components/UploadDropzone'
+import { Button, RoleBadge, Avatar, EmptyState } from '../../components/ui'
 
 type Member = { user_id: number; full_name: string; email: string; role: string }
 type Invite = { email: string; role: string; sent_at: string }
@@ -11,6 +12,8 @@ type FolderRow = { id: number; name: string; parent_id: number | null }
 
 export default function WorkspaceDetail() {
   const { id } = useParams()
+  const [tab, setTab] = useState<'documents' | 'members' | 'invites'>('documents')
+
   const [members, setMembers] = useState<Member[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
@@ -87,124 +90,165 @@ export default function WorkspaceDetail() {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
+  // filtered once, reused for both the list and the empty-state check
+  const visibleDocs = docs.filter(d => activeFolder === null || d.folder_id === activeFolder)
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      {/* --- SECTION 1: TOP ACTION BAR (INVITES) --- */}
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Workspace Controls</h1>
-
-      <form onSubmit={sendInvite} className="bg-white border rounded-xl p-4 mb-4 flex gap-2 items-end">
-        <div className="flex-1">
-          <label className="block text-xs text-gray-500 mb-1">Invite by email</label>
-          <input
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            type="email"
-            required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            placeholder="teammate@company.com"
-          />
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-line bg-surface">
+        <div className="max-w-5xl mx-auto px-8 py-5">
+          <a href="/dashboard" className="text-xs text-muted hover:text-brand">
+            ← All workspaces
+          </a>
+          <h1 className="font-display text-2xl text-foreground mt-1">Workspace</h1>
         </div>
-        <select
-          value={inviteRole}
-          onChange={e => setInviteRole(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-        >
-          <option value="viewer">Viewer</option>
-          <option value="editor">Editor</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-          Invite
-        </button>
-      </form>
-      {inviteMsg && <p className="text-xs text-gray-500 mb-4">{inviteMsg}</p>}
-
-      {invites.length > 0 && (
-        <div className="mb-4 text-xs text-gray-500">
-          <p className="font-medium mb-1">Pending invites</p>
-          {invites.map((inv, i) => (
-            <p key={i}>{inv.email} — invited as {inv.role}</p>
-          ))}
-        </div>
-      )}
-
-      {/* --- SECTION 2: UPLOAD DROPZONE --- */}
-      <div className="mb-6">
-        <UploadDropzone workspaceId={id as string} onUploaded={handleUploaded} />
-      </div>
-
-      {/* --- SECTION 3: FOLDERS AND DOCUMENTS GRID SYSTEM --- */}
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Files & Storage</h2>
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        {/* Left Side Folder Filter Column */}
-        <div className="bg-white border rounded-xl p-4 h-fit">
-          <p className="text-xs font-semibold text-gray-500 mb-2">FOLDERS</p>
-          <button
-            onClick={() => setActiveFolder(null)}
-            className={`block w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
-              activeFolder === null ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            📁 All documents
-          </button>
-          {folders.map(f => (
+        <div className="max-w-5xl mx-auto px-8 flex gap-6 border-t border-line/60">
+          {(['documents', 'members', 'invites'] as const).map((t) => (
             <button
-              key={f.id}
-              onClick={() => setActiveFolder(f.id)}
-              className={`block w-full text-left text-sm px-2 py-1.5 rounded mt-1 transition-colors ${
-                activeFolder === f.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
+              key={t}
+              onClick={() => setTab(t)}
+              className={`py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
+                tab === t ? 'border-brand text-brand' : 'border-transparent text-muted hover:text-foreground'
               }`}
             >
-              📁 {f.name}
+              {t}
             </button>
           ))}
         </div>
-
-        {/* Right Side Filtered Document List Column */}
-        <div className="col-span-3 bg-white border rounded-xl divide-y">
-          {docs
-            .filter(d => activeFolder === null || d.folder_id === activeFolder)
-            .map(d => (
-              <div key={d.id} className="flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{d.filename}</p>
-                  <p className="text-xs text-gray-400">{formatSize(d.size_bytes)} · {d.status}</p>
-                </div>
-              </div>
-            ))}
-          {docs.filter(d => activeFolder === null || d.folder_id === activeFolder).length === 0 && (
-            <p className="text-sm text-gray-400 p-4 text-center">No documents found here — drag one in above.</p>
-          )}
-        </div>
       </div>
 
-      {/* --- SECTION 4: TEAM MANAGEMENT SYSTEM --- */}
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Team Directory</h2>
-      <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-left">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map(m => (
-              <tr key={m.user_id} className="border-t hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-medium text-gray-700">{m.full_name}</td>
-                <td className="px-4 py-3 text-gray-500">{m.email}</td>
-                <td className="px-4 py-3 capitalize">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    m.role === 'admin' ? 'bg-red-50 text-red-700' : m.role === 'editor' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
-                  }`}>
-                    {m.role}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="max-w-5xl mx-auto px-8 py-8">
+        {/* ───────── DOCUMENTS ───────── */}
+        {tab === 'documents' && (
+          <div>
+            <div className="mb-6">
+              <UploadDropzone workspaceId={id as string} onUploaded={handleUploaded} />
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <div className="paper-stack rounded-xl border border-line bg-surface p-4 h-fit">
+                <p className="text-xs font-semibold text-muted mb-2 tracking-wide">FOLDERS</p>
+                <button
+                  onClick={() => setActiveFolder(null)}
+                  className={`block w-full text-left text-sm px-2.5 py-1.5 rounded-lg mb-0.5 transition-colors ${
+                    activeFolder === null ? 'bg-brand/10 text-brand font-medium' : 'text-muted hover:bg-foreground/5'
+                  }`}
+                >
+                  📁 All documents
+                </button>
+                {folders.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setActiveFolder(f.id)}
+                    className={`block w-full text-left text-sm px-2.5 py-1.5 rounded-lg mb-0.5 transition-colors ${
+                      activeFolder === f.id ? 'bg-brand/10 text-brand font-medium' : 'text-muted hover:bg-foreground/5'
+                    }`}
+                  >
+                    📁 {f.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="col-span-3 paper-stack rounded-xl border border-line bg-surface divide-y divide-line">
+                {visibleDocs.map((d) => (
+                  <div key={d.id} className="flex justify-between items-center px-4 py-3.5 hover:bg-foreground/[0.02] transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-md bg-brand/10 flex items-center justify-center text-sm">📄</div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{d.filename}</p>
+                        <p className="text-xs text-muted font-mono mt-0.5">
+                          {formatSize(d.size_bytes)} · {d.status}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {visibleDocs.length === 0 && (
+                  <EmptyState icon="📄" title="No documents found here" subtitle="Drag one into the box above to get started." />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ───────── MEMBERS ───────── */}
+        {tab === 'members' && (
+          <div className="paper-stack rounded-xl border border-line bg-surface overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-background text-muted text-left">
+                <tr>
+                  <th className="px-5 py-3 font-medium">Name</th>
+                  <th className="px-5 py-3 font-medium">Email</th>
+                  <th className="px-5 py-3 font-medium">Role</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {members.map((m) => (
+                  <tr key={m.user_id} className="hover:bg-foreground/[0.02] transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={m.full_name} />
+                        <span className="font-medium text-foreground">{m.full_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-muted">{m.email}</td>
+                    <td className="px-5 py-3">
+                      <RoleBadge role={m.role} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ───────── INVITES ───────── */}
+        {tab === 'invites' && (
+          <div>
+            <form onSubmit={sendInvite} className="paper-stack rounded-xl border border-line bg-surface p-5 mb-6 flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-muted mb-1.5">Invite by email</label>
+                <input
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  type="email"
+                  required
+                  className="w-full border border-line rounded-lg px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none"
+                  placeholder="teammate@company.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1.5">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="border border-line rounded-lg px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand focus:outline-none"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <Button type="submit">Invite</Button>
+            </form>
+            {inviteMsg && <p className="text-xs text-muted mb-6">{inviteMsg}</p>}
+
+            <div className="paper-stack rounded-xl border border-line bg-surface">
+              <p className="text-xs font-semibold text-muted px-5 pt-4 pb-2 tracking-wide">PENDING INVITES</p>
+              <div className="divide-y divide-line">
+                {invites.map((inv, i) => (
+                  <div key={i} className="px-5 py-3 flex items-center justify-between text-sm">
+                    <span className="text-foreground">{inv.email}</span>
+                    <RoleBadge role={inv.role} />
+                  </div>
+                ))}
+                {invites.length === 0 && (
+                  <EmptyState icon="✉️" title="No pending invites" subtitle="Invites you send will show up here until accepted." />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
